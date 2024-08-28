@@ -19,7 +19,7 @@ package org.ladysnake.blabber.api.client;
 
 import com.google.common.collect.ImmutableList;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.option.GameOptions;
@@ -260,7 +260,7 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float tickDelta) {
+    public void render(DrawableHelper context, int mouseX, int mouseY, float tickDelta) {
         this.renderBackground(context);
 
         assert client != null;
@@ -351,13 +351,13 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
         return new PositionTransform(this.illustrationSlots);
     }
 
-    protected void renderDebugInfo(BlabberSettingsComponent settings, DrawContext context, PositionTransform positionTransform, int mouseX, int mouseY) {
+    protected void renderDebugInfo(BlabberSettingsComponent settings, DrawableHelper context, PositionTransform positionTransform, int mouseX, int mouseY) {
         if (settings.isEnabled(BlabberSetting.DEBUG_ANCHORS)) {
             this.renderAnchorDebugInfo(context, positionTransform, mouseX, mouseY);
         }
     }
 
-    protected void renderAnchorDebugInfo(DrawContext context, PositionTransform positionTransform, int mouseX, int mouseY) {
+    protected void renderAnchorDebugInfo(DrawableHelper context, PositionTransform positionTransform, int mouseX, int mouseY) {
         for (IllustrationAnchor anchor : IllustrationAnchor.values()) {
             int color = DEBUG_COLORS[anchor.ordinal() % DEBUG_COLORS.length];
             context.drawText(this.textRenderer, "x", positionTransform.transformX(anchor, -3), positionTransform.transformY(anchor, -5), color, true);
@@ -381,12 +381,12 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
     }
 
     @Override
-    protected void drawBackground(DrawContext matrices, float delta, int mouseX, int mouseY) {
+    protected void drawBackground(DrawableHelper matrices, float delta, int mouseX, int mouseY) {
         // NO-OP
     }
 
     @Override
-    protected void drawForeground(DrawContext matrices, int mouseX, int mouseY) {
+    protected void drawForeground(DrawableHelper matrices, int mouseX, int mouseY) {
         // NO-OP
     }
 

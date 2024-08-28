@@ -23,6 +23,8 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.MapLike;
 import com.mojang.serialization.codecs.OptionalFieldCodec;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -47,6 +49,10 @@ public class FailingOptionalFieldCodec<A> extends OptionalFieldCodec<A> {
         super(name, elementCodec);
         this.name = name;
         this.elementCodec = elementCodec;
+    }
+
+    public static <A> MapCodec<A> of(String text, Codec<Text> textCodec, MutableText empty) {
+        return null;
     }
 
     @Override

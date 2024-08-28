@@ -17,6 +17,7 @@
  */
 package org.ladysnake.blabber.impl.common.model;
 
+import com.google.gson.JsonElement;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -25,7 +26,6 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 import net.minecraft.text.Texts;
-import net.minecraft.util.dynamic.Codecs;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.ladysnake.blabber.impl.common.InstancedDialogueAction;
@@ -44,14 +44,18 @@ public record DialogueState(
         Optional<InstancedDialogueAction<?>> action,
         ChoiceResult type
 ) {
-    public static final Codec<DialogueState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            // Kinda optional, but we still want errors if you got it wrong >:(
-            FailingOptionalFieldCodec.of(Codecs.TEXT, "text", Text.empty()).forGetter(DialogueState::text),
-            FailingOptionalFieldCodec.of(Codec.list(Codec.STRING), "illustrations", Collections.emptyList()).forGetter(DialogueState::illustrations),
-            FailingOptionalFieldCodec.of(Codec.list(DialogueChoice.CODEC), "choices", List.of()).forGetter(DialogueState::choices),
-            FailingOptionalFieldCodec.of(InstancedDialogueAction.CODEC, "action").forGetter(DialogueState::action),
-            FailingOptionalFieldCodec.of(Codec.STRING.xmap(s -> Enum.valueOf(ChoiceResult.class, s.toUpperCase(Locale.ROOT)), Enum::name), "type", ChoiceResult.DEFAULT).forGetter(DialogueState::type)
-    ).apply(instance, DialogueState::new));
+    static Codec<DialogueState> codec(Codec<JsonElement> jsonCodec) {
+        Codec<Text> textCodec = jsonCodec.xmap(Text.Serializer::fromJson, Text.Serializer::toJsonTree);
+
+        return RecordCodecBuilder.create(instance -> instance.group(
+                // Kinda optional, but we still want errors if you got it wrong >:(
+                FailingOptionalFieldCodec.of(textCodec, "text", Text.empty()).forGetter(DialogueState::text),
+                FailingOptionalFieldCodec.of(Codec.list(Codec.STRING), "illustrations", Collections.emptyList()).forGetter(DialogueState::illustrations),
+                FailingOptionalFieldCodec.of(Codec.list(DialogueChoice.codec(jsonCodec)), "choices", List.of()).forGetter(DialogueState::choices),
+                FailingOptionalFieldCodec.of(InstancedDialogueAction.CODEC, "action").forGetter(DialogueState::action),
+                FailingOptionalFieldCodec.of(Codec.STRING.xmap(s -> Enum.valueOf(ChoiceResult.class, s.toUpperCase(Locale.ROOT)), Enum::name), "type", ChoiceResult.DEFAULT).forGetter(DialogueState::type)
+        ).apply(instance, DialogueState::new));
+    }
 
     public static void writeToPacket(PacketByteBuf buf, DialogueState state) {
         buf.writeText(state.text());

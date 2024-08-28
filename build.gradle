@@ -61,6 +61,7 @@ repositories {
 			includeGroup("dev.architectury")
 		}
 	}
+	maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
 }
 
 dependencies {
@@ -73,6 +74,8 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+	compileOnly "org.joml:joml:1.10.8"
 
 	modIncludeImplementation(libs.cca.base)
 	modIncludeImplementation(libs.cca.entity)

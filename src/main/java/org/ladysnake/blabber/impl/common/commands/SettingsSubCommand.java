@@ -50,7 +50,7 @@ public final class SettingsSubCommand {
 
     private static int setEnabled(ServerCommandSource source, ServerPlayerEntity player, BlabberSetting setting, boolean enabled) {
         BlabberSettingsComponent.get(player).setEnabled(setting, enabled);
-        source.sendFeedback(() -> Text.translatable(enabled ? "blabber:commands.setting.enabled" : "blabber:commands.setting.disabled", setting.id()), false);
+        source.sendFeedback(Text.translatable(enabled ? "blabber:commands.setting.enabled" : "blabber:commands.setting.disabled", setting.id()), false);
         return 1;
     }
 }

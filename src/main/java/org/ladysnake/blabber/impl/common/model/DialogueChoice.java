@@ -17,6 +17,7 @@
  */
 package org.ladysnake.blabber.impl.common.model;
 
+import com.google.gson.JsonElement;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -36,12 +37,16 @@ import java.util.List;
 import java.util.Optional;
 
 public record DialogueChoice(Text text, List<String> illustrations, String next, Optional<DialogueChoiceCondition> condition) {
-    public static final Codec<DialogueChoice> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codecs.TEXT.fieldOf("text").forGetter(DialogueChoice::text),
-            FailingOptionalFieldCodec.of(Codec.list(Codec.STRING), "illustrations", Collections.emptyList()).forGetter(DialogueChoice::illustrations),
-            Codec.STRING.fieldOf("next").forGetter(DialogueChoice::next),
-            FailingOptionalFieldCodec.of(DialogueChoiceCondition.CODEC, "only_if").forGetter(DialogueChoice::condition)
-    ).apply(instance, DialogueChoice::new));
+    static Codec<DialogueChoice> codec(Codec<JsonElement> jsonCodec) {
+        Codec<Text> textCodec = jsonCodec.xmap(Text.Serializer::fromJson, Text.Serializer::toJsonTree);
+
+        return RecordCodecBuilder.create(instance -> instance.group(
+                FailingOptionalFieldCodec.of(textCodec, "text", Text.empty()).forGetter(DialogueChoice::text),
+                FailingOptionalFieldCodec.of(Codec.list(Codec.STRING), "illustrations", Collections.emptyList()).forGetter(DialogueChoice::illustrations),
+                Codec.STRING.fieldOf("next").forGetter(DialogueChoice::next),
+                FailingOptionalFieldCodec.of(DialogueChoiceCondition.codec(jsonCodec), "only_if").forGetter(DialogueChoice::condition)
+        ).apply(instance, DialogueChoice::new));
+    }
 
     public static void writeToPacket(PacketByteBuf buf, DialogueChoice choice) {
         buf.writeText(choice.text());

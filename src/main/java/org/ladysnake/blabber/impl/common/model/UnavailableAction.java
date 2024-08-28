@@ -17,8 +17,10 @@
  */
 package org.ladysnake.blabber.impl.common.model;
 
+import com.google.gson.JsonElement;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.OptionalFieldCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.Entity;
 import net.minecraft.network.PacketByteBuf;
@@ -32,10 +34,14 @@ import org.ladysnake.blabber.impl.common.serialization.FailingOptionalFieldCodec
 import java.util.Optional;
 
 public record UnavailableAction(UnavailableDisplay display, Optional<Text> message) {
-    public static final Codec<UnavailableAction> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            UnavailableDisplay.CODEC.fieldOf("display").forGetter(UnavailableAction::display),
-            FailingOptionalFieldCodec.of(Codecs.TEXT, "message").forGetter(UnavailableAction::message)
-    ).apply(instance, UnavailableAction::new));
+    static Codec<UnavailableAction> codec(Codec<JsonElement> jsonCodec) {
+        Codec<Text> textCodec = jsonCodec.xmap(Text.Serializer::fromJson, Text.Serializer::toJsonTree);
+
+        return RecordCodecBuilder.create(instance -> instance.group(
+                UnavailableDisplay.CODEC.fieldOf("display").forGetter(UnavailableAction::display),
+                FailingOptionalFieldCodec.of(textCodec, "message").forGetter(UnavailableAction::message)
+        ).apply(instance, UnavailableAction::new));
+    }
 
     public UnavailableAction(PacketByteBuf buf) {
         this(buf.readEnumConstant(UnavailableDisplay.class), buf.readOptional(PacketByteBuf::readText));

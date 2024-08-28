@@ -23,7 +23,6 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import it.unimi.dsi.fastutil.ints.Int2BooleanMap;
 import it.unimi.dsi.fastutil.ints.Int2BooleanMaps;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
-import net.minecraft.loot.LootDataType;
 import net.minecraft.loot.condition.LootCondition;
 import net.minecraft.loot.context.LootContext;
 import net.minecraft.network.PacketByteBuf;
@@ -138,15 +137,16 @@ public final class DialogueStateMachine {
             List<DialogueChoice> availableChoices = getStates().get(conditionalState.getKey()).choices();
             for (Int2BooleanMap.Entry conditionalChoice : conditionalState.getValue().int2BooleanEntrySet()) {
                 Identifier predicateId = availableChoices.get(conditionalChoice.getIntKey()).condition().orElseThrow().predicate();
-                LootCondition condition = context.getWorld().getServer().getLootManager().getElement(
-                        LootDataType.PREDICATES, predicateId
-                );
-                if (condition == null) throw INVALID_PREDICATE_EXCEPTION.create(predicateId);
-                boolean testResult = runTest(condition, context);
-                if (testResult != conditionalChoice.setValue(testResult)) {
-                    if (ret == null) ret = new ChoiceAvailabilityPacket();
-                    ret.markUpdated(conditionalState.getKey(), conditionalChoice.getIntKey(), testResult);
-                }
+// TODO: Fix this
+//                LootCondition condition = context.getWorld().getServer().getLootManager().getElement(
+//                        LootDataType.PREDICATES, predicateId
+//                );
+//                if (condition == null) throw INVALID_PREDICATE_EXCEPTION.create(predicateId);
+//                boolean testResult = runTest(condition, context);
+//                if (testResult != conditionalChoice.setValue(testResult)) {
+//                    if (ret == null) ret = new ChoiceAvailabilityPacket();
+//                    ret.markUpdated(conditionalState.getKey(), conditionalChoice.getIntKey(), testResult);
+//                }
             }
         }
         return ret;
@@ -157,11 +157,13 @@ public final class DialogueStateMachine {
     }
 
     private static boolean runTest(LootCondition condition, LootContext context) {
-        LootContext.Entry<LootCondition> lootEntry = LootContext.predicate(condition);
-        context.markActive(lootEntry);
-        boolean testResult = condition.test(context);
-        context.markInactive(lootEntry);
-        return testResult;
+//TODO: Fix this
+//        LootContext.Entry<LootCondition> lootEntry = LootContext.predicate(condition);
+//        context.markActive(lootEntry);
+//        boolean testResult = condition.test(context);
+//        context.markInactive(lootEntry);
+//        return testResult;
+        return true;
     }
 
     public void applyAvailabilityUpdate(ChoiceAvailabilityPacket payload) {

@@ -17,8 +17,12 @@
  */
 package org.ladysnake.blabber.impl.common.model;
 
+import com.google.gson.JsonElement;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.Dynamic;
+import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.Entity;
 import net.minecraft.network.PacketByteBuf;
@@ -36,13 +40,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 public record DialogueTemplate(String start, boolean unskippable, Map<String, DialogueState> states, Map<String, DialogueIllustration> illustrations, DialogueLayout<?> layout) {
-    public static final Codec<DialogueTemplate> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.STRING.fieldOf("start_at").forGetter(DialogueTemplate::start),
-            Codec.BOOL.optionalFieldOf("unskippable", false).forGetter(DialogueTemplate::unskippable),
-            Codec.unboundedMap(Codec.STRING, DialogueState.CODEC).fieldOf("states").forGetter(DialogueTemplate::states),
-            FailingOptionalFieldCodec.of(Codec.unboundedMap(Codec.STRING, DialogueIllustrationType.CODEC), "illustrations", Collections.emptyMap()).forGetter(DialogueTemplate::illustrations),
-            FailingOptionalFieldCodec.of(DialogueLayoutType.CODEC, "layout", DialogueLayout.DEFAULT).forGetter(DialogueTemplate::layout)
-    ).apply(instance, DialogueTemplate::new));
+    public static final Codec<DialogueTemplate> CODEC = codec(Codec.PASSTHROUGH.comapFlatMap(
+            dynamic -> DataResult.success(dynamic.convert(JsonOps.INSTANCE).getValue()),
+            json -> new Dynamic<>(JsonOps.INSTANCE, json)
+    ));
+
+    private static Codec<DialogueTemplate> codec(Codec<JsonElement> jsonCodec) {
+        return RecordCodecBuilder.create(instance -> instance.group(
+                Codec.STRING.fieldOf("start_at").forGetter(DialogueTemplate::start),
+                Codec.BOOL.optionalFieldOf("unskippable", false).forGetter(DialogueTemplate::unskippable),
+                Codec.unboundedMap(Codec.STRING, DialogueState.codec(jsonCodec)).fieldOf("states").forGetter(DialogueTemplate::states),
+                FailingOptionalFieldCodec.of(Codec.unboundedMap(Codec.STRING, DialogueIllustrationType.CODEC), "illustrations", Collections.emptyMap()).forGetter(DialogueTemplate::illustrations),
+                FailingOptionalFieldCodec.of(DialogueLayoutType.CODEC, "layout", DialogueLayout.DEFAULT).forGetter(DialogueTemplate::layout)
+        ).apply(instance, DialogueTemplate::new));
+    }
 
     public static void writeToPacket(PacketByteBuf buf, DialogueTemplate dialogue) {
         buf.writeString(dialogue.start());

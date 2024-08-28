@@ -22,7 +22,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.entity.LivingEntity;
@@ -47,7 +47,7 @@ public abstract class EntityIllustrationRenderer<I extends DialogueIllustrationE
 
     @Override
     @Environment(EnvType.CLIENT)
-    public void render(DrawContext context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
+    public void render(DrawableHelper context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
         LivingEntity e = this.renderedEntity == null
                 ? this.renderedEntity = this.getRenderedEntity(MinecraftClient.getInstance().world)
                 : this.renderedEntity;
@@ -76,7 +76,7 @@ public abstract class EntityIllustrationRenderer<I extends DialogueIllustrationE
     }
 
     // Copy-pasted from MC 1.20.4 InventoryScreen#drawEntity
-    public static void drawEntity(DrawContext context, int x1, int y1, int x2, int y2, int size, float f, float mouseX, float mouseY, LivingEntity entity) {
+    public static void drawEntity(DrawableHelper context, int x1, int y1, int x2, int y2, int size, float f, float mouseX, float mouseY, LivingEntity entity) {
         float g = (float)(x1 + x2) / 2.0F;
         float h = (float)(y1 + y2) / 2.0F;
         context.enableScissor(x1, y1, x2, y2);
@@ -107,7 +107,7 @@ public abstract class EntityIllustrationRenderer<I extends DialogueIllustrationE
         context.disableScissor();
     }
 
-    public static void drawEntity(DrawContext context, float x, float y, float size, Vector3f vector3f, Quaternionf quaternionf, @Nullable Quaternionf quaternionf2, LivingEntity entity) {
+    public static void drawEntity(DrawableHelper context, float x, float y, float size, Vector3f vector3f, Quaternionf quaternionf, @Nullable Quaternionf quaternionf2, LivingEntity entity) {
         context.getMatrices().push();
         context.getMatrices().translate(x, y, 50.0);
         context.getMatrices().multiplyPositionMatrix((new Matrix4f()).scaling(size, size, -size));

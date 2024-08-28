@@ -92,7 +92,7 @@ public class DialogueScreenHandler extends ScreenHandler {
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int index) {
+    public ItemStack transferSlot(PlayerEntity player, int slot) {
         return ItemStack.EMPTY;
     }
 

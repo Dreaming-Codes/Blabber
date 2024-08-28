@@ -19,7 +19,7 @@ package org.ladysnake.blabber.impl.client.illustrations;
 
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.registry.Registries;
+import net.minecraft.util.registry.Registry;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.ladysnake.blabber.impl.common.illustrations.entity.DialogueIllustrationNbtEntity;
@@ -31,7 +31,7 @@ public class NbtEntityIllustrationRenderer extends EntityIllustrationRenderer<Di
 
     @Override
     protected @Nullable LivingEntity getRenderedEntity(World world) {
-        EntityType<?> entityType = Registries.ENTITY_TYPE.getOrEmpty(illustration.id()).orElse(null);
+        EntityType<?> entityType = Registry.ENTITY_TYPE.getOrEmpty(illustration.id()).orElse(null);
         if (entityType == null) return null;
 
         if (entityType.create(world) instanceof LivingEntity living) {

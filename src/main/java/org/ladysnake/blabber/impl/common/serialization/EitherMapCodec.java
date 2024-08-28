@@ -57,7 +57,7 @@ public class EitherMapCodec<F, S> extends MapCodec<Either<F, S>> {
         if (secondRead.result().isPresent()) {
             return secondRead;
         }
-        return DataResult.error(() -> "Failed to parse either. First: " + firstRead.error().orElseThrow().message() + "; Second: " + secondRead.error().orElseThrow().message());
+        return DataResult.error("Failed to parse either. First: " + firstRead.error().orElseThrow().message() + "; Second: " + secondRead.error().orElseThrow().message());
     }
 
     @Override

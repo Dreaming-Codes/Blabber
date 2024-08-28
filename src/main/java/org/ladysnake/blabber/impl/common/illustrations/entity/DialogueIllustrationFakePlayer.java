@@ -18,8 +18,13 @@
 package org.ladysnake.blabber.impl.common.illustrations.entity;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.codecs.PrimitiveCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.render.entity.PlayerModelPart;
 import net.minecraft.nbt.NbtCompound;
@@ -27,14 +32,12 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Arm;
 import net.minecraft.util.dynamic.Codecs;
 import org.ladysnake.blabber.api.illustration.DialogueIllustrationType;
+import org.ladysnake.blabber.impl.common.PortedCodecs;
 import org.ladysnake.blabber.impl.common.model.IllustrationAnchor;
 import org.ladysnake.blabber.impl.common.serialization.FailingOptionalFieldCodec;
 
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
 
 public record DialogueIllustrationFakePlayer(GameProfile profile,
                                              IllustrationAnchor anchor,
@@ -47,8 +50,9 @@ public record DialogueIllustrationFakePlayer(GameProfile profile,
                                              StareTarget stareAt,
                                              Optional<PlayerModelOptions> modelOptions,
                                              Optional<NbtCompound> data) implements DialogueIllustrationEntity {
+
     private static final Codec<DialogueIllustrationFakePlayer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codecs.GAME_PROFILE.fieldOf("profile").forGetter(DialogueIllustrationFakePlayer::profile),
+            PortedCodecs.GAME_PROFILE.fieldOf("profile").forGetter(DialogueIllustrationFakePlayer::profile),
             FailingOptionalFieldCodec.of(IllustrationAnchor.CODEC, "anchor", IllustrationAnchor.TOP_LEFT).forGetter(DialogueIllustrationFakePlayer::anchor),
             Codec.INT.fieldOf("x").forGetter(DialogueIllustrationFakePlayer::x),
             Codec.INT.fieldOf("y").forGetter(DialogueIllustrationFakePlayer::y),
@@ -114,7 +118,7 @@ public record DialogueIllustrationFakePlayer(GameProfile profile,
         private static DataResult<PlayerModelPart> partFromString(String key) {
             PlayerModelPart part = partsByName.get(key);
             if (part != null) return DataResult.success(part);
-            return DataResult.error(() -> "Not a valid player model part " + key + " (should be one of " + partsByName.keySet() + ")");
+            return DataResult.error("Not a valid player model part " + key + " (should be one of " + partsByName.keySet() + ")");
         }
 
         public static final Codec<EnumSet<PlayerModelPart>> PLAYER_MODEL_PARTS_CODEC = Codec.list(Codec.STRING.comapFlatMap(
@@ -141,12 +145,13 @@ public record DialogueIllustrationFakePlayer(GameProfile profile,
         ).apply(instance, PlayerModelOptions::new));
 
         public PlayerModelOptions(PacketByteBuf buf) {
-            this(buf.readEnumConstant(Arm.class), buf.readEnumSet(PlayerModelPart.class));
+            this(buf.readEnumConstant(Arm.class), null/*TODO: buf.readEnumSet(PlayerModelPart.class)*/);
         }
 
         public void writeToBuffer(PacketByteBuf buf) {
             buf.writeEnumConstant(this.mainHand);
-            buf.writeEnumSet(this.visibleParts, PlayerModelPart.class);
+            //TODO: implement this
+            //buf.writeEnumSet(this.visibleParts, PlayerModelPart.class);
         }
 
         public byte packVisibleParts() {

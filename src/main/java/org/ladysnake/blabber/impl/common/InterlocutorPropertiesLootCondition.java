@@ -38,11 +38,12 @@ import java.util.Optional;
 import java.util.Set;
 
 public record InterlocutorPropertiesLootCondition(EntityPredicate predicate) implements LootCondition {
-    public static final Codec<InterlocutorPropertiesLootCondition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-        Codecs.JSON_ELEMENT.xmap(EntityPredicate::fromJson, EntityPredicate::toJson)
-                           .fieldOf("predicate")
-                           .forGetter(InterlocutorPropertiesLootCondition::predicate)
-    ).apply(instance, InterlocutorPropertiesLootCondition::new));
+//TODO: Fix this
+//    public static final Codec<InterlocutorPropertiesLootCondition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+//        Codecs.JSON_ELEMENT.xmap(EntityPredicate::fromJson, EntityPredicate::toJson)
+//                           .fieldOf("predicate")
+//                           .forGetter(InterlocutorPropertiesLootCondition::predicate)
+//    ).apply(instance, InterlocutorPropertiesLootCondition::new));
 
     public static final LootConditionType TYPE =
         new LootConditionType(new JsonSerializer<InterlocutorPropertiesLootCondition>() {
@@ -52,11 +53,12 @@ public record InterlocutorPropertiesLootCondition(EntityPredicate predicate) imp
                 final InterlocutorPropertiesLootCondition object,
                 final JsonSerializationContext context
             ) {
-                json.asMap().putAll(CODEC.encodeStart(JsonOps.INSTANCE, object)
-                                         .result()
-                                         .orElseThrow()
-                                         .getAsJsonObject()
-                                         .asMap());
+//TODO: Fix this
+//                json.asMap().putAll(CODEC.encodeStart(JsonOps.INSTANCE, object)
+//                                         .result()
+//                                         .orElseThrow()
+//                                         .getAsJsonObject()
+//                                         .asMap());
             }
 
             @Override
@@ -64,7 +66,8 @@ public record InterlocutorPropertiesLootCondition(EntityPredicate predicate) imp
                 final JsonObject json,
                 final JsonDeserializationContext context
             ) {
-                return CODEC.parse(JsonOps.INSTANCE, json).result().orElseThrow();
+                //TODO: return CODEC.parse(JsonOps.INSTANCE, json).result().orElseThrow();
+                return null;
             }
         });
 

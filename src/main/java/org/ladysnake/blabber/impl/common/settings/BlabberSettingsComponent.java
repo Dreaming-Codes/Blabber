@@ -75,16 +75,18 @@ public class BlabberSettingsComponent implements AutoSyncedComponent {
     public void writeSyncPacket(PacketByteBuf buf, ServerPlayerEntity recipient) {
         boolean enabled = this.isDebugEnabled();
         buf.writeBoolean(enabled);
-        if (enabled) {
-            buf.writeEnumSet(this.enabledSettings, BlabberSetting.class);
-        }
+// TODO: Implement this
+//        if (enabled) {
+//            buf.writeEnumSet(this.enabledSettings, BlabberSetting.class);
+//        }
     }
 
     @Override
     public void applySyncPacket(PacketByteBuf buf) {
         boolean debugEnabled = buf.readBoolean();
         if (debugEnabled) {
-            this.enabledSettings = buf.readEnumSet(BlabberSetting.class);
+//TODO: Implement this
+//            this.enabledSettings = buf.readEnumSet(BlabberSetting.class);
         } else {
             this.enabledSettings = EnumSet.noneOf(BlabberSetting.class);
         }

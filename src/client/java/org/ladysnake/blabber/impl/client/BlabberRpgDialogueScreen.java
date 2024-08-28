@@ -18,7 +18,7 @@
 package org.ladysnake.blabber.impl.client;
 
 import com.google.common.collect.ImmutableList;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.entity.player.PlayerInventory;
@@ -87,7 +87,7 @@ public class BlabberRpgDialogueScreen extends BlabberDialogueScreen<DefaultLayou
     }
 
     @Override
-    public void renderBackground(DrawContext context) {
+    public void renderBackground(DrawableHelper context) {
         // Side background
         int y = this.choiceListMinY;
         ImmutableList<AvailableChoice> availableChoices = handler.getAvailableChoices();
@@ -103,7 +103,7 @@ public class BlabberRpgDialogueScreen extends BlabberDialogueScreen<DefaultLayou
         context.fillGradient(0, this.mainTextMinY - TEXT_TOP_MARGIN, this.width, this.height, 0xc0101010, 0xd0101010);
     }
 
-    public static void fillHorizontalGradient(DrawContext context, int startX, int startY, int endX, int endY, int colorStart, int colorEnd) {
+    public static void fillHorizontalGradient(DrawableHelper context, int startX, int startY, int endX, int endY, int colorStart, int colorEnd) {
         final int z = 0;
         final int verticalPadding = 2;
         VertexConsumer vertexConsumer = context.getVertexConsumers().getBuffer(RenderLayer.getGui());

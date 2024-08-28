@@ -41,7 +41,7 @@ public record EitherCodecButGood<F, S>(Codec<F> first, Codec<S> second) implemen
         if (secondRead.result().isPresent()) {
             return secondRead;
         }
-        return DataResult.error(() -> "Failed to parse either. First: " + firstRead.error().orElseThrow().message() + "; Second: " + secondRead.error().orElseThrow().message());
+        return DataResult.error("Failed to parse either. First: " + firstRead.error().orElseThrow().message() + "; Second: " + secondRead.error().orElseThrow().message());
     }
 
     @Override

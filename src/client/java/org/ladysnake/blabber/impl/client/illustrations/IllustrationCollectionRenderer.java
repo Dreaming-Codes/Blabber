@@ -18,7 +18,7 @@
 package org.ladysnake.blabber.impl.client.illustrations;
 
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.DrawableHelper;
 import org.ladysnake.blabber.api.client.illustration.DialogueIllustrationRenderer;
 import org.ladysnake.blabber.api.illustration.DialogueIllustration;
 import org.ladysnake.blabber.impl.client.BlabberClient;
@@ -40,7 +40,7 @@ public class IllustrationCollectionRenderer extends DialogueIllustrationRenderer
     }
 
     @Override
-    public void render(DrawContext context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
+    public void render(DrawableHelper context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
         for (DialogueIllustrationRenderer<?> i : elements) {
             i.render(context, textRenderer, positionTransform, mouseX, mouseY, tickDelta);
         }

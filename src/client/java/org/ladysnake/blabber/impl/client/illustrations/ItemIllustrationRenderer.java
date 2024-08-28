@@ -18,7 +18,7 @@
 package org.ladysnake.blabber.impl.client.illustrations;
 
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.item.ItemStack;
 import org.ladysnake.blabber.api.client.illustration.DialogueIllustrationRenderer;
 import org.ladysnake.blabber.impl.common.illustrations.DialogueIllustrationItem;
@@ -30,7 +30,7 @@ public class ItemIllustrationRenderer extends DialogueIllustrationRenderer<Dialo
     }
 
     @Override
-    public void render(DrawContext context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
+    public void render(DrawableHelper context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
         // We draw the actual item, then the count and bar and such.
         try {
             ItemStack stack = this.illustration.stack();

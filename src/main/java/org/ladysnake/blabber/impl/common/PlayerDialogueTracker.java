@@ -26,9 +26,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.loot.context.LootContext;
-import net.minecraft.loot.context.LootContextParameterSet;
 import net.minecraft.loot.context.LootContextParameters;
-import net.minecraft.loot.context.LootContextTypes;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -154,7 +152,7 @@ public final class PlayerDialogueTracker implements ServerTickingComponent {
             if (resumptionAttempts++ < 200) {   // only try for like, 10 seconds after joining the world
                 Entity interlocutor;
                 if (saved.interlocutorUuid() != null) {
-                    interlocutor = serverPlayer.getServerWorld().getEntity(saved.interlocutorUuid());
+                    interlocutor = serverPlayer.getWorld().getEntity(saved.interlocutorUuid());
                     if (interlocutor == null) return;    // no one to talk to
                 } else {
                     interlocutor = null;
@@ -197,12 +195,10 @@ public final class PlayerDialogueTracker implements ServerTickingComponent {
 
     private @Nullable ChoiceAvailabilityPacket updateConditions(ServerPlayerEntity player, DialogueStateMachine currentDialogue) throws CommandSyntaxException {
         if (currentDialogue.hasConditions()) {
-            return currentDialogue.updateConditions(new LootContext.Builder(
-                    new LootContextParameterSet.Builder(player.getServerWorld())
-                            .add(LootContextParameters.ORIGIN, player.getPos())
-                            .addOptional(LootContextParameters.THIS_ENTITY, player)
-                            .build(LootContextTypes.COMMAND)
-            ).build(null));
+            return currentDialogue.updateConditions(new LootContext.Builder(player.getWorld())
+                            .parameter(LootContextParameters.ORIGIN, player.getPos())
+                            .optionalParameter(LootContextParameters.THIS_ENTITY, player)
+                    .build(null));
         }
         return null;
     }
