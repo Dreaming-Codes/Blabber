@@ -8,7 +8,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.dynamic.Codecs;
-import org.ladysnake.blabber.impl.common.illustrations.entity.DialogueIllustrationFakePlayer;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -33,23 +32,17 @@ public class PortedCodecs {
             });
             return propertyMap;
         }, (properties) -> com.mojang.datafixers.util.Either.right(properties.values().stream().toList()));
-        GAME_PROFILE = RecordCodecBuilder.create((instance) -> {
-            return instance.group(Codec.mapPair(Codecs.UUID.xmap(Optional::of, (optional) -> {
-                return (UUID)optional.orElse((UUID) null);
-            }).optionalFieldOf("id", Optional.empty()), Codec.STRING.xmap(Optional::of, (optional) -> {
-                return (String)optional.orElse((String) null);
-            }).optionalFieldOf("name", Optional.empty())).flatXmap(PortedCodecs::createGameProfileFromPair, PortedCodecs::createPairFromGameProfile).forGetter(Function.identity()), GAME_PROFILE_PROPERTY_MAP.optionalFieldOf("properties", new PropertyMap()).forGetter(GameProfile::getProperties)).apply(instance, (profile, properties) -> {
-                properties.forEach((key, property) -> {
-                    profile.getProperties().put(key, property);
-                });
-                return profile;
+        GAME_PROFILE = RecordCodecBuilder.create((instance) -> instance.group(Codec.mapPair(Codecs.UUID.xmap(Optional::of, (optional) -> optional.orElse(null)).optionalFieldOf("id", Optional.empty()), Codec.STRING.xmap(Optional::of, (optional) -> optional.orElse(null)).optionalFieldOf("name", Optional.empty())).flatXmap(PortedCodecs::createGameProfileFromPair, PortedCodecs::createPairFromGameProfile).forGetter(Function.identity()), GAME_PROFILE_PROPERTY_MAP.optionalFieldOf("properties", new PropertyMap()).forGetter(GameProfile::getProperties)).apply(instance, (profile, properties) -> {
+            properties.forEach((key, property) -> {
+                profile.getProperties().put(key, property);
             });
-        });
+            return profile;
+        }));
     }
 
     private static DataResult<GameProfile> createGameProfileFromPair(Pair<Optional<UUID>, Optional<String>> pair) {
         try {
-            return DataResult.success(new GameProfile((UUID)((Optional)pair.getFirst()).orElse((Object)null), (String)((Optional)pair.getSecond()).orElse((Object)null)));
+            return DataResult.success(new GameProfile((UUID) ((Optional) pair.getFirst()).orElse(null), (String) ((Optional) pair.getSecond()).orElse(null)));
         } catch (Throwable var2) {
             Throwable throwable = var2;
             Objects.requireNonNull(throwable);

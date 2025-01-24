@@ -23,6 +23,7 @@ import net.minecraft.client.gui.screen.ingame.HandledScreens;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.ladysnake.blabber.Blabber;
 import org.ladysnake.blabber.api.client.BlabberDialogueScreen;
 import org.ladysnake.blabber.api.client.BlabberScreenRegistry;
@@ -31,12 +32,7 @@ import org.ladysnake.blabber.api.illustration.DialogueIllustration;
 import org.ladysnake.blabber.api.illustration.DialogueIllustrationType;
 import org.ladysnake.blabber.api.layout.DialogueLayout;
 import org.ladysnake.blabber.api.layout.DialogueLayoutType;
-import org.ladysnake.blabber.impl.client.illustrations.FakePlayerIllustrationRenderer;
-import org.ladysnake.blabber.impl.client.illustrations.IllustrationCollectionRenderer;
-import org.ladysnake.blabber.impl.client.illustrations.ItemIllustrationRenderer;
-import org.ladysnake.blabber.impl.client.illustrations.NbtEntityIllustrationRenderer;
-import org.ladysnake.blabber.impl.client.illustrations.SelectedEntityIllustrationRenderer;
-import org.ladysnake.blabber.impl.client.illustrations.TextureIllustrationRenderer;
+import org.ladysnake.blabber.impl.client.illustrations.*;
 import org.ladysnake.blabber.impl.common.BlabberRegistrar;
 import org.ladysnake.blabber.impl.common.DialogueRegistry;
 import org.ladysnake.blabber.impl.common.DialogueScreenHandler;
@@ -46,50 +42,17 @@ import org.ladysnake.blabber.impl.common.illustrations.DialogueIllustrationTextu
 import org.ladysnake.blabber.impl.common.illustrations.entity.DialogueIllustrationFakePlayer;
 import org.ladysnake.blabber.impl.common.illustrations.entity.DialogueIllustrationNbtEntity;
 import org.ladysnake.blabber.impl.common.illustrations.entity.DialogueIllustrationSelectorEntity;
-import org.ladysnake.blabber.impl.common.packets.ChoiceAvailabilityPacket;
-import org.ladysnake.blabber.impl.common.packets.DialogueListPacket;
-import org.ladysnake.blabber.impl.common.packets.SelectedDialogueStatePacket;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static io.netty.buffer.Unpooled.buffer;
 
 public final class BlabberClient implements ClientModInitializer {
     private static final Map<DialogueLayoutType<?>, HandledScreens.Provider<?, ?>> screenRegistry = new LinkedHashMap<>();
     private static final Map<DialogueIllustrationType<?>, DialogueIllustrationRenderer.Factory<?>> illustrationRenderers = new LinkedHashMap<>();
-
-    @Override
-    public void onInitializeClient() {
-        DialogueIllustrationRenderer.register(DialogueIllustrationCollection.TYPE, IllustrationCollectionRenderer::new);
-        DialogueIllustrationRenderer.register(DialogueIllustrationItem.TYPE, ItemIllustrationRenderer::new);
-        DialogueIllustrationRenderer.register(DialogueIllustrationNbtEntity.TYPE, NbtEntityIllustrationRenderer::new);
-        DialogueIllustrationRenderer.register(DialogueIllustrationFakePlayer.TYPE, FakePlayerIllustrationRenderer::new);
-        DialogueIllustrationRenderer.register(DialogueIllustrationSelectorEntity.TYPE, SelectedEntityIllustrationRenderer::new);
-        DialogueIllustrationRenderer.register(DialogueIllustrationTexture.TYPE, TextureIllustrationRenderer::new);
-        BlabberScreenRegistry.register(BlabberRegistrar.CLASSIC_LAYOUT, BlabberDialogueScreen::new);
-        BlabberScreenRegistry.register(BlabberRegistrar.RPG_LAYOUT, BlabberRpgDialogueScreen::new);
-        HandledScreens.register(BlabberRegistrar.DIALOGUE_SCREEN_HANDLER, (HandledScreens.Provider<DialogueScreenHandler, BlabberDialogueScreen<?>>) BlabberClient::createDialogueScreen);
-        ClientPlayNetworking.registerGlobalReceiver(
-                DialogueListPacket.TYPE,
-                (packet, player, responseSender) -> DialogueRegistry.setClientIds(packet.dialogueIds())
-        );
-        ClientPlayNetworking.registerGlobalReceiver(ChoiceAvailabilityPacket.TYPE, (packet, player, responseSender) -> {
-            if (player.currentScreenHandler instanceof DialogueScreenHandler dialogueScreenHandler) {
-                dialogueScreenHandler.handleAvailabilityUpdate(packet);
-            }
-        });
-        ClientPlayNetworking.registerGlobalReceiver(SelectedDialogueStatePacket.TYPE, (packet, player, responseSender) -> {
-            if (player.currentScreenHandler instanceof DialogueScreenHandler dialogueScreenHandler) {
-                dialogueScreenHandler.setCurrentState(packet.stateKey());
-            }
-        });
-        ClientPlayNetworking.registerGlobalReceiver(SelectedDialogueStatePacket.TYPE, (packet, player, responseSender) -> {
-            if (player.currentScreenHandler instanceof DialogueScreenHandler dialogueScreenHandler) {
-                dialogueScreenHandler.setCurrentState(packet.stateKey());
-            }
-        });
-    }
 
     public static <P extends DialogueLayout.Params> void registerLayoutScreen(
             DialogueLayoutType<P> layoutId,
@@ -124,5 +87,34 @@ public final class BlabberClient implements ClientModInitializer {
         PacketByteBuf buf = new PacketByteBuf(buffer());
         buf.writeByte(choice);
         ClientPlayNetworking.send(BlabberRegistrar.DIALOGUE_ACTION, buf);
+    }
+
+    @Override
+    public void onInitializeClient() {
+        DialogueIllustrationRenderer.register(DialogueIllustrationCollection.TYPE, IllustrationCollectionRenderer::new);
+        DialogueIllustrationRenderer.register(DialogueIllustrationItem.TYPE, ItemIllustrationRenderer::new);
+        DialogueIllustrationRenderer.register(DialogueIllustrationNbtEntity.TYPE, NbtEntityIllustrationRenderer::new);
+        DialogueIllustrationRenderer.register(DialogueIllustrationFakePlayer.TYPE, FakePlayerIllustrationRenderer::new);
+        DialogueIllustrationRenderer.register(DialogueIllustrationSelectorEntity.TYPE, SelectedEntityIllustrationRenderer::new);
+        DialogueIllustrationRenderer.register(DialogueIllustrationTexture.TYPE, TextureIllustrationRenderer::new);
+        BlabberScreenRegistry.register(BlabberRegistrar.CLASSIC_LAYOUT, BlabberDialogueScreen::new);
+        BlabberScreenRegistry.register(BlabberRegistrar.RPG_LAYOUT, BlabberRpgDialogueScreen::new);
+        HandledScreens.register(BlabberRegistrar.DIALOGUE_SCREEN_HANDLER, (HandledScreens.Provider<DialogueScreenHandler, BlabberDialogueScreen<?>>) BlabberClient::createDialogueScreen);
+        ClientPlayNetworking.registerGlobalReceiver(
+                Blabber.id("dialogue_list"), ((client, handler, buf, responseSender) -> {
+                    DialogueRegistry.setClientIds(new HashSet<>(buf.<Identifier, Set<Identifier>>readCollection(HashSet::new, PacketByteBuf::readIdentifier)));
+                }));
+        ClientPlayNetworking.registerGlobalReceiver(Blabber.id("choice_availability"), (client, handler, buf, responseSender) -> {
+            if (client.player != null && client.player.currentScreenHandler instanceof DialogueScreenHandler dialogueScreenHandler) {
+                dialogueScreenHandler.handleAvailabilityUpdate(buf);
+            }
+        });
+        ClientPlayNetworking.registerGlobalReceiver(Blabber.id("selected_dialogue_state"), (client, handler, buf, responseSender) -> {
+            if (client.player != null && client.player.currentScreenHandler instanceof DialogueScreenHandler dialogueScreenHandler) {
+                dialogueScreenHandler.setCurrentState(buf.readString());
+            }
+        });
+
+
     }
 }

@@ -30,6 +30,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import org.ladysnake.blabber.Blabber;
 import org.ladysnake.blabber.impl.common.commands.SettingsSubCommand;
 
+import java.util.BitSet;
 import java.util.EnumSet;
 
 public class BlabberSettingsComponent implements AutoSyncedComponent {
@@ -75,18 +76,32 @@ public class BlabberSettingsComponent implements AutoSyncedComponent {
     public void writeSyncPacket(PacketByteBuf buf, ServerPlayerEntity recipient) {
         boolean enabled = this.isDebugEnabled();
         buf.writeBoolean(enabled);
-// TODO: Implement this
-//        if (enabled) {
-//            buf.writeEnumSet(this.enabledSettings, BlabberSetting.class);
-//        }
+        if (enabled) {
+            BlabberSetting[] enums = (BlabberSetting[]) BlabberSetting.class.getEnumConstants();
+            BitSet bitSet = new BitSet(enums.length);
+
+            for(int i = 0; i < enums.length; ++i) {
+                bitSet.set(i, this.enabledSettings.contains(enums[i]));
+            }
+
+            buf.writeBitSet(bitSet);
+        }
     }
 
     @Override
     public void applySyncPacket(PacketByteBuf buf) {
         boolean debugEnabled = buf.readBoolean();
         if (debugEnabled) {
-//TODO: Implement this
-//            this.enabledSettings = buf.readEnumSet(BlabberSetting.class);
+            BlabberSetting[] enums = (BlabberSetting[]) BlabberSetting.class.getEnumConstants();
+            BitSet bitSet = buf.readBitSet();
+            EnumSet<BlabberSetting> enumSet = EnumSet.noneOf(BlabberSetting.class);
+
+            for(int i = 0; i < enums.length; ++i) {
+                if (bitSet.get(i)) {
+                    enumSet.add(enums[i]);
+                }
+            }
+            this.enabledSettings = enumSet;
         } else {
             this.enabledSettings = EnumSet.noneOf(BlabberSetting.class);
         }

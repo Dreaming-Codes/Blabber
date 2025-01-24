@@ -18,13 +18,15 @@
 package org.ladysnake.blabber.api.client;
 
 import com.google.common.collect.ImmutableList;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.option.GameOptions;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.text.MutableText;
+import net.minecraft.text.StringVisitable;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
@@ -58,7 +60,7 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
     public static final int DEFAULT_TITLE_GAP = 20;
     public static final int DEFAULT_TEXT_MAX_WIDTH = 300;
     public static final int DEFAULT_INSTRUCTIONS_BOTTOM_MARGIN = 30;
-    public static final int[] DEBUG_COLORS = new int[] {
+    public static final int[] DEBUG_COLORS = new int[]{
             0x42b862,
             0xb84242,
             0xb86a42,
@@ -140,6 +142,11 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
         this.handler.getIllustrations().forEach((key, illustration) -> this.illustrations.put(key, BlabberClient.createRenderer(illustration)));
     }
 
+    @Override
+    protected void drawBackground(MatrixStack matrices, float delta, int mouseX, int mouseY) {
+        // NO OP
+    }
+
     protected void prepareLayout() {
         this.computeMargins();
         this.layoutIllustrationAnchors();
@@ -153,8 +160,8 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
 
     protected void layoutIllustrationAnchors() {
         this.illustrationSlots.get(IllustrationAnchor.BEFORE_MAIN_TEXT).set(this.mainTextMinX, this.mainTextMinY);
-        this.illustrationSlots.get(IllustrationAnchor.SPOT_1).set(this.width * 3/4, this.choiceListMinY);
-        this.illustrationSlots.get(IllustrationAnchor.SPOT_2).set(this.width * 2/5, this.height * 2/3);
+        this.illustrationSlots.get(IllustrationAnchor.SPOT_1).set(this.width * 3 / 4, this.choiceListMinY);
+        this.illustrationSlots.get(IllustrationAnchor.SPOT_2).set(this.width * 2 / 5, this.height * 2 / 3);
     }
 
     @Override
@@ -172,7 +179,7 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
 
     @Override
     public boolean keyPressed(int key, int scancode, int modifiers) {
-        GameOptions options = MinecraftClient.getInstance().options;
+        /*GameOptions options = MinecraftClient.getInstance().options;
         if (key == GLFW.GLFW_KEY_ENTER || options.inventoryKey.matchesKey(key, scancode)) {
             this.confirmChoice(this.selectedChoice);
             return true;
@@ -183,7 +190,7 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
         if (tab || down || options.forwardKey.matchesKey(key, scancode)) {
             scrollDialogueChoice(tab && !shift || down ? -1 : 1);
             return true;
-        }
+        }*/
         return super.keyPressed(key, scancode, modifiers);
     }
 
@@ -199,13 +206,14 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
             case END_DIALOGUE -> this.client.setScreen(null);
             case ASK_CONFIRMATION -> {
                 ImmutableList<AvailableChoice> choices = this.handler.getAvailableChoices();
-                this.client.setScreen(new ConfirmScreen(
+                ConfirmScreen confirmScreen = new ConfirmScreen(
                         this::onBigChoiceMade,
-                        this.handler.getCurrentText(),
                         Text.empty(),
+                        this.handler.getCurrentText(),
                         choices.get(0).text(),
                         choices.get(1).text()
-                ));
+                );
+                this.client.setScreen(confirmScreen);
             }
             default -> {
                 this.selectedChoice = 0;
@@ -260,8 +268,8 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
     }
 
     @Override
-    public void render(DrawableHelper context, int mouseX, int mouseY, float tickDelta) {
-        this.renderBackground(context);
+    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+        this.renderBackground(matrices);
 
         assert client != null;
         assert client.player != null;
@@ -272,12 +280,11 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
         int y = mainTextMinY;
 
         for (String illustrationName : this.handler.getCurrentIllustrations()) {
-            this.getIllustrationRenderer(illustrationName).render(context, this.textRenderer, positionTransform, mouseX, mouseY, tickDelta);
+            this.getIllustrationRenderer(illustrationName).render(matrices, this.textRenderer, positionTransform, mouseX, mouseY, delta);
         }
 
         Text mainText = this.handler.getCurrentText();
-
-        context.drawTextWrapped(this.textRenderer, mainText, mainTextMinX, y, mainTextMaxWidth, mainTextColor);
+        this.textRenderer.drawTrimmed(mainText, mainTextMinX, y, mainTextMaxWidth, mainTextColor);
         y = this.choiceListMinY;
         ImmutableList<AvailableChoice> choices = this.handler.getAvailableChoices();
 
@@ -286,18 +293,19 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
             int strHeight = this.textRenderer.getWrappedLinesHeight(choice.text(), choiceListMaxWidth);
             boolean selected = i == this.selectedChoice;
             int choiceColor = choice.unavailabilityMessage().isPresent() ? lockedChoiceColor : selected ? selectedChoiceColor : this.choiceColor;
-            context.drawTextWrapped(this.textRenderer, choice.text(), choiceListMinX, y, choiceListMaxWidth, choiceColor);
+            this.textRenderer.drawTrimmed(StringVisitable.plain(choice.text().getString()), choiceListMinX, y, choiceListMaxWidth, choiceColor);
 
             positionTransform.setControlPoints(choiceListMinX, y, choiceListMinX + choiceListMaxWidth, y + strHeight);
 
             for (String illustrationName : choice.illustrations()) {
-                this.getIllustrationRenderer(illustrationName).render(context, this.textRenderer, positionTransform, mouseX, mouseY, tickDelta);
+                this.getIllustrationRenderer(illustrationName).render(matrices, this.textRenderer, positionTransform, mouseX, mouseY, delta);
             }
 
             if (selected) {
                 if (choice.unavailabilityMessage().isPresent()) {
-                    context.drawTexture(
-                            lockIconTexture,
+                    //lockIconTexture
+                    RenderSystem.setShaderTexture(0, lockIconTexture);
+                    drawTexture(matrices,
                             selectionIconMinX,
                             y + selectionIconMarginTop,
                             0,
@@ -308,15 +316,16 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
                             selectionIconSize,
                             selectionIconSize
                     );
-                    context.drawTooltip(
-                            this.textRenderer,
-                            choice.unavailabilityMessage().get(),
+                    this.renderOrderedTooltip(
+                            matrices,
+                            List.of(choice.unavailabilityMessage().get().asOrderedText()),
                             this.hoveringChoice ? mouseX : choiceListMaxWidth,
                             this.hoveringChoice ? mouseY : y
                     );
                 } else {
-                    context.drawTexture(
-                            selectionIconTexture,
+                    RenderSystem.setShaderTexture(0, selectionIconTexture);
+                    drawTexture(
+                            matrices,
                             selectionIconMinX,
                             y + selectionIconMarginTop,
                             0,
@@ -331,15 +340,16 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
             }
             y += strHeight + choiceGap;
         }
-
-        context.drawTextWrapped(this.textRenderer, instructions, Math.max((this.width - this.textRenderer.getWidth(instructions)) / 2, 5), instructionsMinY, this.width - 5, 0x808080);
+        // Removed instruction
+        //this.textRenderer.drawTrimmed(instructions, Math.max((this.width - this.textRenderer.getWidth(instructions)) / 2, 5), instructionsMinY, this.width - 5, 0x808080);
 
         BlabberSettingsComponent settings = BlabberSettingsComponent.get(client.player);
         if (settings.isDebugEnabled()) {
             positionTransform.setControlPoints(0, 0, this.width, this.height);
-            renderDebugInfo(settings, context, positionTransform, mouseX, mouseY);
+            renderDebugInfo(settings, matrices, positionTransform, mouseX, mouseY);
         }
     }
+
 
     private DialogueIllustrationRenderer<?> getIllustrationRenderer(String illustrationName) {
         DialogueIllustrationRenderer<?> renderer = this.illustrations.get(illustrationName);
@@ -351,28 +361,28 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
         return new PositionTransform(this.illustrationSlots);
     }
 
-    protected void renderDebugInfo(BlabberSettingsComponent settings, DrawableHelper context, PositionTransform positionTransform, int mouseX, int mouseY) {
+    protected void renderDebugInfo(BlabberSettingsComponent settings, MatrixStack context, PositionTransform positionTransform, int mouseX, int mouseY) {
         if (settings.isEnabled(BlabberSetting.DEBUG_ANCHORS)) {
             this.renderAnchorDebugInfo(context, positionTransform, mouseX, mouseY);
         }
     }
 
-    protected void renderAnchorDebugInfo(DrawableHelper context, PositionTransform positionTransform, int mouseX, int mouseY) {
+    protected void renderAnchorDebugInfo(MatrixStack context, PositionTransform positionTransform, int mouseX, int mouseY) {
         for (IllustrationAnchor anchor : IllustrationAnchor.values()) {
             int color = DEBUG_COLORS[anchor.ordinal() % DEBUG_COLORS.length];
-            context.drawText(this.textRenderer, "x", positionTransform.transformX(anchor, -3), positionTransform.transformY(anchor, -5), color, true);
+            this.textRenderer.drawWithShadow(context, "x", positionTransform.transformX(anchor, -3), positionTransform.transformY(anchor, -5), color);
             MutableText text = Text.empty().append(Text.literal(anchor.asString()).styled(s -> s.withColor(color))).append(" > X: " + positionTransform.inverseTransformX(anchor, mouseX) + ", Y: " + positionTransform.inverseTransformY(anchor, mouseY));
             switch (anchor) {
-                case TOP_LEFT, TOP_RIGHT -> context.drawTooltip(
-                        this.textRenderer,
-                        text,
+                case TOP_LEFT, TOP_RIGHT -> this.renderOrderedTooltip(
+                        context,
+                        List.of(text.asOrderedText()),
                         positionTransform.transformX(anchor, 0),
                         15
                 );
 
-                default -> context.drawTooltip(
-                        this.textRenderer,
-                        text,
+                default -> this.renderOrderedTooltip(
+                        context,
+                        List.of(text.asOrderedText()),
                         positionTransform.transformX(anchor, 0),
                         positionTransform.transformY(anchor, 0)
                 );
@@ -381,12 +391,7 @@ public class BlabberDialogueScreen<P extends DialogueLayout.Params> extends Hand
     }
 
     @Override
-    protected void drawBackground(DrawableHelper matrices, float delta, int mouseX, int mouseY) {
-        // NO-OP
-    }
-
-    @Override
-    protected void drawForeground(DrawableHelper matrices, int mouseX, int mouseY) {
+    protected void drawForeground(MatrixStack matrices, int mouseX, int mouseY) {
         // NO-OP
     }
 

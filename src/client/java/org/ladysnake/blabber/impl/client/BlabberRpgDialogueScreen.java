@@ -18,19 +18,24 @@
 package org.ladysnake.blabber.impl.client;
 
 import com.google.common.collect.ImmutableList;
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.*;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.ColorHelper;
-import org.joml.Matrix4f;
+import net.minecraft.util.math.Matrix4f;
 import org.ladysnake.blabber.api.client.BlabberDialogueScreen;
 import org.ladysnake.blabber.api.layout.DefaultLayoutParams;
 import org.ladysnake.blabber.api.layout.Margins;
 import org.ladysnake.blabber.impl.common.DialogueScreenHandler;
 import org.ladysnake.blabber.impl.common.machine.AvailableChoice;
 import org.ladysnake.blabber.impl.common.model.IllustrationAnchor;
+
+import static net.minecraft.client.render.RenderPhase.LEQUAL_DEPTH_TEST;
+import static net.minecraft.client.render.RenderPhase.TRANSLUCENT_TRANSPARENCY;
 
 public class BlabberRpgDialogueScreen extends BlabberDialogueScreen<DefaultLayoutParams> {
     public static final int INSTRUCTIONS_BOTTOM_MARGIN = 6;
@@ -87,26 +92,33 @@ public class BlabberRpgDialogueScreen extends BlabberDialogueScreen<DefaultLayou
     }
 
     @Override
-    public void renderBackground(DrawableHelper context) {
+    public void renderBackground(MatrixStack matrices) {
         // Side background
         int y = this.choiceListMinY;
         ImmutableList<AvailableChoice> availableChoices = handler.getAvailableChoices();
         for (int i = 0; i < availableChoices.size(); i++) {
             AvailableChoice choice = availableChoices.get(i);
             int strHeight = this.textRenderer.getWrappedLinesHeight(choice.text(), choiceListMaxWidth);
-            fillHorizontalGradient(context, this.choiceListMinX - 2, y, this.width, y + strHeight, 0xc0101010, 0x80101010);
+            fillHorizontalGradient(matrices, this.choiceListMinX - 2, y, this.width, y + strHeight, 0xc0101010, 0x80101010);
             if (i == selectedChoice) this.selectionIconMarginTop = ((strHeight - 9) / 2) - 4;
             y += strHeight + choiceGap;
         }
         // Bottom background
-        context.fillGradient(0, this.mainTextMinY - 20, this.width, this.mainTextMinY - TEXT_TOP_MARGIN, 0x00101010, 0xc0101010);
-        context.fillGradient(0, this.mainTextMinY - TEXT_TOP_MARGIN, this.width, this.height, 0xc0101010, 0xd0101010);
+        fillGradient(matrices, 0, this.mainTextMinY - 20, this.width, this.mainTextMinY - TEXT_TOP_MARGIN, 0x00101010, 0xc0101010);
+        fillGradient(matrices,0, this.mainTextMinY - TEXT_TOP_MARGIN, this.width, this.height, 0xc0101010, 0xd0101010);
+
     }
 
-    public static void fillHorizontalGradient(DrawableHelper context, int startX, int startY, int endX, int endY, int colorStart, int colorEnd) {
+
+    public static void fillHorizontalGradient(MatrixStack matrices, int startX, int startY, int endX, int endY, int colorStart, int colorEnd) {
         final int z = 0;
         final int verticalPadding = 2;
-        VertexConsumer vertexConsumer = context.getVertexConsumers().getBuffer(RenderLayer.getGui());
+        BufferBuilder vertexConsumer = Tessellator.getInstance().getBuffer();
+        RenderSystem.enableBlend();
+        RenderSystem.disableTexture();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        vertexConsumer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         float a0 = (float) ColorHelper.Argb.getAlpha(colorStart) / 255.0F;
         float r0 = (float) ColorHelper.Argb.getRed(colorStart) / 255.0F;
         float g0 = (float) ColorHelper.Argb.getGreen(colorStart) / 255.0F;
@@ -115,7 +127,7 @@ public class BlabberRpgDialogueScreen extends BlabberDialogueScreen<DefaultLayou
         float r1 = (float) ColorHelper.Argb.getRed(colorEnd) / 255.0F;
         float g1 = (float) ColorHelper.Argb.getGreen(colorEnd) / 255.0F;
         float b1 = (float) ColorHelper.Argb.getBlue(colorEnd) / 255.0F;
-        Matrix4f matrix4f = context.getMatrices().peek().getPositionMatrix();
+        Matrix4f matrix4f = matrices.peek().getPositionMatrix();
         vertexConsumer.vertex(matrix4f, (float)startX, (float)startY - verticalPadding, (float)z).color(r1, g1, b1, a1).next();
         vertexConsumer.vertex(matrix4f, (float)startX, (float)startY, (float)z).color(r0, g0, b0, a0).next();
         vertexConsumer.vertex(matrix4f, (float)endX, (float)startY, (float)z).color(r1, g1, b1, a1).next();
@@ -130,5 +142,8 @@ public class BlabberRpgDialogueScreen extends BlabberDialogueScreen<DefaultLayou
         vertexConsumer.vertex(matrix4f, (float)startX, (float)endY + verticalPadding, (float)z).color(r1, g1, b1, a1).next();
         vertexConsumer.vertex(matrix4f, (float)endX, (float)endY + verticalPadding, (float)z).color(r1, g1, b1, a1).next();
         vertexConsumer.vertex(matrix4f, (float)endX, (float)endY, (float)z).color(r1, g1, b1, a1).next();
+        BufferRenderer.drawWithShader(vertexConsumer.end());
+        RenderSystem.enableTexture();
+        RenderSystem.disableBlend();
     }
 }

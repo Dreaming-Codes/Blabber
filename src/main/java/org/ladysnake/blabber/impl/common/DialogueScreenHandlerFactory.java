@@ -17,6 +17,7 @@
  */
 package org.ladysnake.blabber.impl.common;
 
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -45,7 +46,11 @@ public class DialogueScreenHandlerFactory implements ExtendedScreenHandlerFactor
     public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
         DialogueStateMachine.writeToPacket(buf, this.dialogue);
         buf.writeOptional(Optional.ofNullable(interlocutor), (b, e) -> b.writeVarInt(e.getId()));
-        this.dialogue.createFullAvailabilityUpdatePacket().write(buf);
+        buf.writeMap(
+                this.dialogue.createFullAvailabilityUpdatePacket(),
+                PacketByteBuf::writeString,
+                (b, updatedChoices) -> b.writeMap(updatedChoices, PacketByteBuf::writeVarInt, PacketByteBuf::writeBoolean)
+        );
     }
 
     @Override

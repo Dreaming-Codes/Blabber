@@ -27,8 +27,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.loot.context.LootContext;
 import net.minecraft.loot.context.LootContextParameters;
+import net.minecraft.loot.context.LootContextTypes;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -36,7 +38,6 @@ import org.jetbrains.annotations.Nullable;
 import org.ladysnake.blabber.Blabber;
 import org.ladysnake.blabber.impl.common.machine.DialogueStateMachine;
 import org.ladysnake.blabber.impl.common.model.DialogueTemplate;
-import org.ladysnake.blabber.impl.common.packets.ChoiceAvailabilityPacket;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -164,6 +165,10 @@ public final class PlayerDialogueTracker implements ServerTickingComponent {
         }
 
         if (this.currentDialogue != null) {
+            if(!this.player.isAlive()){
+                this.endDialogue();
+                return;
+            }
             if (this.player.currentScreenHandler == this.player.playerScreenHandler) {
                 if (this.currentDialogue.isUnskippable()) {
                     this.openDialogueScreen();
@@ -174,10 +179,10 @@ public final class PlayerDialogueTracker implements ServerTickingComponent {
             }
 
             try {
-                ChoiceAvailabilityPacket update = this.updateConditions(serverPlayer, this.currentDialogue);
+                PacketByteBuf update = this.updateConditions(serverPlayer, this.currentDialogue);
 
                 if (update != null) {
-                    ServerPlayNetworking.send(serverPlayer, update);
+                    ServerPlayNetworking.send(serverPlayer, Blabber.id("choice_availability"), update);
                 }
             } catch (CommandSyntaxException e) {
                 throw new IllegalStateException("Error while updating dialogue conditions", e);
@@ -193,12 +198,12 @@ public final class PlayerDialogueTracker implements ServerTickingComponent {
         }
     }
 
-    private @Nullable ChoiceAvailabilityPacket updateConditions(ServerPlayerEntity player, DialogueStateMachine currentDialogue) throws CommandSyntaxException {
+    private @Nullable PacketByteBuf updateConditions(ServerPlayerEntity player, DialogueStateMachine currentDialogue) throws CommandSyntaxException {
         if (currentDialogue.hasConditions()) {
             return currentDialogue.updateConditions(new LootContext.Builder(player.getWorld())
-                            .parameter(LootContextParameters.ORIGIN, player.getPos())
-                            .optionalParameter(LootContextParameters.THIS_ENTITY, player)
-                    .build(null));
+                    .parameter(LootContextParameters.ORIGIN, player.getPos())
+                    .optionalParameter(LootContextParameters.THIS_ENTITY, player)
+                    .build(LootContextTypes.COMMAND));
         }
         return null;
     }
@@ -208,5 +213,7 @@ public final class PlayerDialogueTracker implements ServerTickingComponent {
         this.player.openHandledScreen(new DialogueScreenHandlerFactory(this.currentDialogue, Text.of("Blabber Dialogue Screen"), this.interlocutor));
     }
 
-    private record DeserializedState(Identifier dialogueId, DialogueTemplate template, String selectedState, @Nullable UUID interlocutorUuid) { }
+    private record DeserializedState(Identifier dialogueId, DialogueTemplate template, String selectedState,
+                                     @Nullable UUID interlocutorUuid) {
+    }
 }

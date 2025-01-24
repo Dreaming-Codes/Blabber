@@ -17,8 +17,10 @@
  */
 package org.ladysnake.blabber.impl.client.illustrations;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.util.math.MatrixStack;
 import org.ladysnake.blabber.api.client.illustration.DialogueIllustrationRenderer;
 import org.ladysnake.blabber.impl.common.illustrations.DialogueIllustrationTexture;
 import org.ladysnake.blabber.impl.common.illustrations.PositionTransform;
@@ -29,9 +31,9 @@ public class TextureIllustrationRenderer extends DialogueIllustrationRenderer<Di
     }
 
     @Override
-    public void render(DrawableHelper context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
-        context.drawTexture(
-                illustration.texture(),
+    public void render(MatrixStack context, TextRenderer textRenderer, PositionTransform positionTransform, int mouseX, int mouseY, float tickDelta) {
+        RenderSystem.setShaderTexture(0, illustration.texture());
+        DrawableHelper.drawTexture(context,
                 illustration.minX(positionTransform),
                 illustration.minY(positionTransform),
                 illustration.width(),
@@ -44,4 +46,5 @@ public class TextureIllustrationRenderer extends DialogueIllustrationRenderer<Di
                 illustration.textureHeight().orElse(illustration.height())
         );
     }
+
 }

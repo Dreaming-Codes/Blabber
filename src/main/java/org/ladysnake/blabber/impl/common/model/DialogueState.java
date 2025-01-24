@@ -38,7 +38,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 public record DialogueState(
-        Text text,
+        List<DialogueRandomAnswer> text,
         List<String> illustrations,
         List<DialogueChoice> choices,
         Optional<InstancedDialogueAction<?>> action,
@@ -49,7 +49,7 @@ public record DialogueState(
 
         return RecordCodecBuilder.create(instance -> instance.group(
                 // Kinda optional, but we still want errors if you got it wrong >:(
-                FailingOptionalFieldCodec.of(textCodec, "text", Text.empty()).forGetter(DialogueState::text),
+                FailingOptionalFieldCodec.of(Codec.list(DialogueRandomAnswer.codec(jsonCodec)), "text", List.of()).forGetter(DialogueState::text),
                 FailingOptionalFieldCodec.of(Codec.list(Codec.STRING), "illustrations", Collections.emptyList()).forGetter(DialogueState::illustrations),
                 FailingOptionalFieldCodec.of(Codec.list(DialogueChoice.codec(jsonCodec)), "choices", List.of()).forGetter(DialogueState::choices),
                 FailingOptionalFieldCodec.of(InstancedDialogueAction.CODEC, "action").forGetter(DialogueState::action),
@@ -58,7 +58,7 @@ public record DialogueState(
     }
 
     public static void writeToPacket(PacketByteBuf buf, DialogueState state) {
-        buf.writeText(state.text());
+        buf.writeCollection(state.text(), DialogueRandomAnswer::writeToPacket);
         buf.writeCollection(state.illustrations(), PacketByteBuf::writeString);
         buf.writeCollection(state.choices(), DialogueChoice::writeToPacket);
         buf.writeEnumConstant(state.type());
@@ -66,7 +66,7 @@ public record DialogueState(
     }
 
     public DialogueState(PacketByteBuf buf) {
-        this(buf.readText(), buf.readCollection(ArrayList::new, PacketByteBuf::readString), buf.readList(DialogueChoice::new), Optional.empty(), buf.readEnumConstant(ChoiceResult.class));
+        this(buf.readList(DialogueRandomAnswer::new), buf.readCollection(ArrayList::new, PacketByteBuf::readString), buf.readList(DialogueChoice::new), Optional.empty(), buf.readEnumConstant(ChoiceResult.class));
     }
 
     public String getNextState(int choice) {
@@ -78,9 +78,13 @@ public record DialogueState(
         for (DialogueChoice choice : choices()) {
             parsedChoices.add(choice.parseText(source, sender));
         }
+        List<DialogueRandomAnswer> parsedText = new ArrayList<>(text().size());
+        for (DialogueRandomAnswer random : text()) {
+            parsedText.add(random.parseText(source, sender));
+        }
 
         return new DialogueState(
-                Texts.parse(source, text(), sender, 0),
+                parsedText,
                 illustrations(),
                 parsedChoices,
                 action(),
@@ -90,8 +94,9 @@ public record DialogueState(
 
     @Override
     public String toString() {
+        // TODO: Refactor text, now is array of text
         return "DialogueState{" +
-                "text='" + StringUtils.abbreviate(text.getString(), 20) + '\'' +
+                "text='" + StringUtils.abbreviate(text.toString(), 20) + '\'' +
                 ", illustrations=" + illustrations +
                 ", choices=" + choices +
                 ", type=" + type

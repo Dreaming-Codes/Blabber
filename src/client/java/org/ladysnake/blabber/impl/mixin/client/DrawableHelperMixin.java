@@ -26,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Slice;
 
 @Mixin(DrawableHelper.class)
-public abstract class DrawContextMixin implements ItemIllustrationRenderer.DrawContextHooks {
+public abstract class DrawableHelperMixin implements ItemIllustrationRenderer.DrawContextHooks {
     @Unique
     private float blabber$itemScale = 1;
 
@@ -35,15 +35,15 @@ public abstract class DrawContextMixin implements ItemIllustrationRenderer.DrawC
         this.blabber$itemScale = itemScale;
     }
 
-    @ModifyExpressionValue(
+   /* @ModifyExpressionValue(
             method = "drawItem(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/world/World;Lnet/minecraft/item/ItemStack;IIII)V",
             slice = @Slice(
-                    from = @At(value = "INVOKE", target = "Lnet/minecraft/client/util/math/MatrixStack;multiplyPositionMatrix(Lorg/joml/Matrix4f;)V"),
+                    from = @At(value = "INVOKE",target = "Lnet/minecraft/client/util/math/MatrixStack;multiplyPositionMatrix(Lorg/joml/Matrix4f;)V"),
                     to = @At(value = "INVOKE", target = "Lnet/minecraft/client/util/math/MatrixStack;scale(FFF)V")
             ),
             at = @At(value = "CONSTANT", args = "floatValue=16.0")
     )
     private float scaleItem(float original) {
         return original * blabber$itemScale;
-    }
+    }*/
 }

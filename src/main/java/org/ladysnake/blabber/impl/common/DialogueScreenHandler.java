@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableList;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -34,7 +35,6 @@ import org.ladysnake.blabber.api.layout.DialogueLayout;
 import org.ladysnake.blabber.impl.common.machine.AvailableChoice;
 import org.ladysnake.blabber.impl.common.machine.DialogueStateMachine;
 import org.ladysnake.blabber.impl.common.model.ChoiceResult;
-import org.ladysnake.blabber.impl.common.packets.ChoiceAvailabilityPacket;
 
 import java.util.List;
 import java.util.Map;
@@ -101,13 +101,14 @@ public class DialogueScreenHandler extends ScreenHandler {
         return true;
     }
 
-    public void handleAvailabilityUpdate(ChoiceAvailabilityPacket packet) {
+    public void handleAvailabilityUpdate(PacketByteBuf packet) {
         this.dialogue.applyAvailabilityUpdate(packet);
     }
 
     @CheckEnv(Env.CLIENT)
     public ChoiceResult makeChoice(int choice) {
-        return this.dialogue.choose(choice, action -> {});
+        return this.dialogue.choose(choice, action -> {
+        });
     }
 
     public boolean makeChoice(ServerPlayerEntity player, int choice) {

@@ -23,10 +23,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.mojang.serialization.JsonOps;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.ResourceReloadListenerKeys;
 import net.fabricmc.fabric.api.resource.SimpleResourceReloadListener;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.resource.LifecycledResourceManager;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.resource.ResourceType;
@@ -36,7 +38,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.profiler.Profiler;
 import org.ladysnake.blabber.Blabber;
 import org.ladysnake.blabber.impl.common.model.DialogueTemplate;
-import org.ladysnake.blabber.impl.common.packets.DialogueListPacket;
 import org.ladysnake.blabber.impl.common.validation.DialogueLoadingException;
 import org.ladysnake.blabber.impl.common.validation.DialogueValidator;
 import org.ladysnake.blabber.impl.common.validation.ValidationResult;
@@ -56,6 +57,9 @@ public final class DialogueLoader implements SimpleResourceReloadListener<Map<Id
     public static final String BLABBER_DIALOGUES_PATH = "blabber/dialogues";
     public static final Identifier ID = Blabber.id("dialogue_loader");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    private DialogueLoader() {
+    }
 
     public static void init() {
         DialogueLoader instance = new DialogueLoader();
@@ -110,14 +114,13 @@ public final class DialogueLoader implements SimpleResourceReloadListener<Map<Id
     public void endDataPackReload(MinecraftServer server, LifecycledResourceManager resourceManager, boolean success) {
         if (success) {
             Set<Identifier> dialogueIds = DialogueRegistry.getIds();
-            DialogueListPacket idSyncPacket = new DialogueListPacket(dialogueIds);
             for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                ServerPlayNetworking.send(player, idSyncPacket);
+                PacketByteBuf packetByteBuf = PacketByteBufs.create();
+                packetByteBuf.writeCollection(dialogueIds, PacketByteBuf::writeIdentifier);
+                ServerPlayNetworking.send(player, Blabber.id("dialogue_list"), packetByteBuf);
                 PlayerDialogueTracker.get(player).updateDialogue();
             }
         }
     }
-
-    private DialogueLoader() {}
 
 }

@@ -23,31 +23,22 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import it.unimi.dsi.fastutil.ints.Int2BooleanMap;
 import it.unimi.dsi.fastutil.ints.Int2BooleanMaps;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.loot.condition.LootCondition;
 import net.minecraft.loot.context.LootContext;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.ladysnake.blabber.Blabber;
 import org.ladysnake.blabber.api.DialogueActionV2;
 import org.ladysnake.blabber.api.illustration.DialogueIllustration;
 import org.ladysnake.blabber.api.layout.DialogueLayout;
 import org.ladysnake.blabber.impl.common.InstancedDialogueAction;
-import org.ladysnake.blabber.impl.common.model.ChoiceResult;
-import org.ladysnake.blabber.impl.common.model.DialogueChoice;
-import org.ladysnake.blabber.impl.common.model.DialogueChoiceCondition;
-import org.ladysnake.blabber.impl.common.model.DialogueState;
-import org.ladysnake.blabber.impl.common.model.DialogueTemplate;
-import org.ladysnake.blabber.impl.common.model.UnavailableAction;
-import org.ladysnake.blabber.impl.common.model.UnavailableDisplay;
-import org.ladysnake.blabber.impl.common.packets.ChoiceAvailabilityPacket;
+import org.ladysnake.blabber.impl.common.model.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
@@ -59,12 +50,18 @@ public final class DialogueStateMachine {
     private final Map<String, Int2BooleanMap> conditionalChoices;
     private @Nullable String currentStateKey;
     private ImmutableList<AvailableChoice> availableChoices = ImmutableList.of();
+    private int textPicked=-2;
+    private @Nullable String stateLog;
 
     public DialogueStateMachine(Identifier id, DialogueTemplate template, @Nullable String start) {
         this.template = template;
         this.id = id;
         this.conditionalChoices = gatherConditionalChoices(template);
         this.selectState(start == null ? template.start() : start);
+    }
+
+    public DialogueStateMachine(PacketByteBuf buf) {
+        this(buf.readIdentifier(), new DialogueTemplate(buf), buf.readString());
     }
 
     private static Map<String, Int2BooleanMap> gatherConditionalChoices(DialogueTemplate template) {
@@ -91,8 +88,13 @@ public final class DialogueStateMachine {
         buf.writeString(dialogue.getCurrentStateKey());
     }
 
-    public DialogueStateMachine(PacketByteBuf buf) {
-        this(buf.readIdentifier(), new DialogueTemplate(buf), buf.readString());
+    private static boolean runTest(LootCondition condition, LootContext context) {
+        // MH
+        return condition.test(context);
+    }
+
+    private static Optional<Text> defaultLockedMessage() {
+        return Optional.of(Text.translatable("blabber:dialogue.locked_choice"));
     }
 
     private Map<String, DialogueState> getStates() {
@@ -112,7 +114,28 @@ public final class DialogueStateMachine {
     }
 
     public Text getCurrentText() {
-        return this.getCurrentState().text();
+        if(!Objects.equals(stateLog, this.currentStateKey)){
+            textPicked= -2;
+            stateLog = this.currentStateKey;
+        }
+        if(textPicked==-2) {
+            switch (this.getCurrentState().text().size()) {
+                case 0:
+                    textPicked = -1;
+                    break;
+                case 1:
+                    textPicked = 0;
+                    break;
+                default:
+                    textPicked = new Random().nextInt(this.getCurrentState().text().size());
+                    break;
+            }
+        }
+        if (textPicked == -1) {
+            return Text.literal("");
+        }
+        return this.getCurrentState().text().get(textPicked).text();
+
     }
 
     public List<String> getCurrentIllustrations() {
@@ -131,43 +154,40 @@ public final class DialogueStateMachine {
         return !this.conditionalChoices.isEmpty();
     }
 
-    public @Nullable ChoiceAvailabilityPacket updateConditions(LootContext context) throws CommandSyntaxException {
-        ChoiceAvailabilityPacket ret = null;
+    public @NotNull PacketByteBuf updateConditions(LootContext context) throws CommandSyntaxException {
+        Map<String, Int2BooleanMap> updatedChoice = new HashMap<>();
         for (Map.Entry<String, Int2BooleanMap> conditionalState : this.conditionalChoices.entrySet()) {
             List<DialogueChoice> availableChoices = getStates().get(conditionalState.getKey()).choices();
             for (Int2BooleanMap.Entry conditionalChoice : conditionalState.getValue().int2BooleanEntrySet()) {
                 Identifier predicateId = availableChoices.get(conditionalChoice.getIntKey()).condition().orElseThrow().predicate();
-// TODO: Fix this
-//                LootCondition condition = context.getWorld().getServer().getLootManager().getElement(
-//                        LootDataType.PREDICATES, predicateId
-//                );
-//                if (condition == null) throw INVALID_PREDICATE_EXCEPTION.create(predicateId);
-//                boolean testResult = runTest(condition, context);
-//                if (testResult != conditionalChoice.setValue(testResult)) {
-//                    if (ret == null) ret = new ChoiceAvailabilityPacket();
-//                    ret.markUpdated(conditionalState.getKey(), conditionalChoice.getIntKey(), testResult);
-//                }
+                LootCondition condition = context.getWorld().getServer().getPredicateManager().get(predicateId);
+                if (condition == null) throw INVALID_PREDICATE_EXCEPTION.create(predicateId);
+                boolean testResult = runTest(condition, context);
+                if (testResult != conditionalChoice.setValue(testResult)) {
+                    updatedChoice.putIfAbsent(conditionalState.getKey(), conditionalState.getValue());
+                    updatedChoice.putIfAbsent(conditionalState.getKey(), new Int2BooleanOpenHashMap()).put(conditionalChoice.getIntKey(), testResult);
+                }
             }
         }
-        return ret;
+        PacketByteBuf out = PacketByteBufs.create();
+        out.writeMap(
+                updatedChoice,
+                PacketByteBuf::writeString,
+                (b, updatedChoices) -> b.writeMap(updatedChoices, PacketByteBuf::writeVarInt, PacketByteBuf::writeBoolean)
+        );
+        return out;
     }
 
-    public ChoiceAvailabilityPacket createFullAvailabilityUpdatePacket() {
-        return new ChoiceAvailabilityPacket(this.conditionalChoices);
+    public Map<String, Int2BooleanMap> createFullAvailabilityUpdatePacket() {
+        return this.conditionalChoices;
     }
 
-    private static boolean runTest(LootCondition condition, LootContext context) {
-//TODO: Fix this
-//        LootContext.Entry<LootCondition> lootEntry = LootContext.predicate(condition);
-//        context.markActive(lootEntry);
-//        boolean testResult = condition.test(context);
-//        context.markInactive(lootEntry);
-//        return testResult;
-        return true;
-    }
-
-    public void applyAvailabilityUpdate(ChoiceAvailabilityPacket payload) {
-        payload.updatedChoices().forEach((stateKey, choiceIndices) -> {
+    public void applyAvailabilityUpdate(PacketByteBuf payload) {
+        Map<String, Int2BooleanMap> map = payload.readMap(
+                PacketByteBuf::readString,
+                b -> b.readMap(Int2BooleanOpenHashMap::new, PacketByteBuf::readVarInt, PacketByteBuf::readBoolean)
+        );
+        map.forEach((stateKey, choiceIndices) -> {
             Int2BooleanMap conditionalState = this.conditionalChoices.get(stateKey);
             for (Int2BooleanMap.Entry updatedChoice : choiceIndices.int2BooleanEntrySet()) {
                 conditionalState.put(updatedChoice.getIntKey(), updatedChoice.getBooleanValue());
@@ -240,10 +260,6 @@ public final class DialogueStateMachine {
             newChoices.add(AvailableChoice.ESCAPE_HATCH);
         }
         return newChoices.build();
-    }
-
-    private static Optional<Text> defaultLockedMessage() {
-        return Optional.of(Text.translatable("blabber:dialogue.locked_choice"));
     }
 
     public String getCurrentStateKey() {

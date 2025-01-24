@@ -17,17 +17,12 @@
  */
 package org.ladysnake.blabber.impl.common.packets;
 
-import net.fabricmc.fabric.api.networking.v1.FabricPacket;
-import net.fabricmc.fabric.api.networking.v1.PacketType;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
-import org.ladysnake.blabber.Blabber;
 
-import java.util.HashSet;
 import java.util.Set;
 
-public record DialogueListPacket(Set<Identifier> dialogueIds) implements FabricPacket {
-    public static final PacketType<DialogueListPacket> TYPE = PacketType.create(Blabber.id("dialogue_list"), DialogueListPacket::new);
+public record DialogueListPacket(Set<Identifier> dialogueIds) {
+    /*public static final PacketType<DialogueListPacket> TYPE = PacketType.create(Blabber.id("dialogue_list"), DialogueListPacket::new);
 
     public DialogueListPacket(PacketByteBuf buf) {
         this(buf.<Identifier, Set<Identifier>>readCollection(HashSet::new, PacketByteBuf::readIdentifier));
@@ -41,5 +36,5 @@ public record DialogueListPacket(Set<Identifier> dialogueIds) implements FabricP
     @Override
     public PacketType<?> getType() {
         return TYPE;
-    }
+    }*/
 }

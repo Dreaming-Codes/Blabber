@@ -18,26 +18,19 @@
 package org.ladysnake.blabber.impl.common.illustrations.entity;
 
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
-import com.mojang.authlib.properties.PropertyMap;
-import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import com.mojang.serialization.DynamicOps;
-import com.mojang.serialization.codecs.PrimitiveCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.render.entity.PlayerModelPart;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Arm;
-import net.minecraft.util.dynamic.Codecs;
 import org.ladysnake.blabber.api.illustration.DialogueIllustrationType;
 import org.ladysnake.blabber.impl.common.PortedCodecs;
 import org.ladysnake.blabber.impl.common.model.IllustrationAnchor;
 import org.ladysnake.blabber.impl.common.serialization.FailingOptionalFieldCodec;
 
 import java.util.*;
-import java.util.function.Function;
 
 public record DialogueIllustrationFakePlayer(GameProfile profile,
                                              IllustrationAnchor anchor,
@@ -106,21 +99,8 @@ public record DialogueIllustrationFakePlayer(GameProfile profile,
 
     public record PlayerModelOptions(Arm mainHand, EnumSet<PlayerModelPart> visibleParts) {
         public static final PlayerModelOptions DEFAULT = new PlayerModelOptions(Arm.RIGHT, EnumSet.allOf(PlayerModelPart.class));
+        public static final EnumSet<PlayerModelPart> DEFAULT_VISIBLE_PARTS = EnumSet.allOf(PlayerModelPart.class);
         private static final Map<String, PlayerModelPart> partsByName;
-
-        static {
-            partsByName = new HashMap<>();
-            for (PlayerModelPart part : PlayerModelPart.values()) {
-                partsByName.put(part.getName(), part);
-            }
-        }
-
-        private static DataResult<PlayerModelPart> partFromString(String key) {
-            PlayerModelPart part = partsByName.get(key);
-            if (part != null) return DataResult.success(part);
-            return DataResult.error("Not a valid player model part " + key + " (should be one of " + partsByName.keySet() + ")");
-        }
-
         public static final Codec<EnumSet<PlayerModelPart>> PLAYER_MODEL_PARTS_CODEC = Codec.list(Codec.STRING.comapFlatMap(
                 PlayerModelOptions::partFromString,
                 PlayerModelPart::getName
@@ -129,8 +109,6 @@ public record DialogueIllustrationFakePlayer(GameProfile profile,
             ret.addAll(l);
             return ret;
         }, List::copyOf);
-        public static final EnumSet<PlayerModelPart> DEFAULT_VISIBLE_PARTS = EnumSet.allOf(PlayerModelPart.class);
-
         public static final Codec<PlayerModelOptions> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 FailingOptionalFieldCodec.of(Codec.STRING.xmap(s -> switch (s) {
                     case "left" -> Arm.LEFT;
@@ -144,14 +122,46 @@ public record DialogueIllustrationFakePlayer(GameProfile profile,
                 FailingOptionalFieldCodec.of(PLAYER_MODEL_PARTS_CODEC, "visible_parts", DEFAULT_VISIBLE_PARTS).forGetter(PlayerModelOptions::visibleParts)
         ).apply(instance, PlayerModelOptions::new));
 
+        static {
+            partsByName = new HashMap<>();
+            for (PlayerModelPart part : PlayerModelPart.values()) {
+                partsByName.put(part.getName(), part);
+            }
+        }
+
         public PlayerModelOptions(PacketByteBuf buf) {
-            this(buf.readEnumConstant(Arm.class), null/*TODO: buf.readEnumSet(PlayerModelPart.class)*/);
+            this(buf.readEnumConstant(Arm.class), getEnumSet(buf));
+        }
+
+        private static DataResult<PlayerModelPart> partFromString(String key) {
+            PlayerModelPart part = partsByName.get(key);
+            if (part != null) return DataResult.success(part);
+            return DataResult.error("Not a valid player model part " + key + " (should be one of " + partsByName.keySet() + ")");
+        }
+
+        private static EnumSet<PlayerModelPart> getEnumSet(PacketByteBuf buf) {
+            PlayerModelPart[] enums = (PlayerModelPart[]) PlayerModelPart.class.getEnumConstants();
+            BitSet bitSet = buf.readBitSet();
+            EnumSet<PlayerModelPart> enumSet = EnumSet.noneOf(PlayerModelPart.class);
+
+            for (int i = 0; i < enums.length; ++i) {
+                if (bitSet.get(i)) {
+                    enumSet.add(enums[i]);
+                }
+            }
+            return enumSet;
         }
 
         public void writeToBuffer(PacketByteBuf buf) {
             buf.writeEnumConstant(this.mainHand);
-            //TODO: implement this
-            //buf.writeEnumSet(this.visibleParts, PlayerModelPart.class);
+            PlayerModelPart[] enums = (PlayerModelPart[]) PlayerModelPart.class.getEnumConstants();
+            BitSet bitSet = new BitSet(enums.length);
+
+            for (int i = 0; i < enums.length; ++i) {
+                bitSet.set(i, this.visibleParts.contains(enums[i]));
+            }
+
+            buf.writeBitSet(bitSet);
         }
 
         public byte packVisibleParts() {

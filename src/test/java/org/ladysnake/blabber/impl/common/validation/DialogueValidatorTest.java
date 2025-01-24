@@ -19,6 +19,7 @@ package org.ladysnake.blabber.impl.common.validation;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.Bootstrap;
 import net.minecraft.SharedConstants;
@@ -31,6 +32,8 @@ import org.ladysnake.blabber.impl.common.model.DialogueTemplate;
 
 import java.io.InputStreamReader;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
 
 public class DialogueValidatorTest {
     @BeforeAll
@@ -40,7 +43,7 @@ public class DialogueValidatorTest {
     }
 
     @Test
-    public void validationFailsOnIncompleteDialogue() {
+    public void validationFailsOnIncompleteDialogue() throws Exception {
         DialogueTemplate dialogue = loadDialogue("/incomplete_dialogue.json");
         Assertions.assertInstanceOf(
                 ValidationResult.Error.NoChoice.class,
@@ -50,7 +53,7 @@ public class DialogueValidatorTest {
     }
 
     @Test
-    public void validationLogsConditionalDialogues() {
+    public void validationLogsConditionalDialogues() throws Exception {
         DialogueTemplate dialogue = loadDialogue("/conditional_dialogue.json");
         ValidationResult result = DialogueValidator.validateStructure(dialogue);
         Assertions.assertTrue(result instanceof ValidationResult.Warnings warnings && warnings.warnings().get(0) instanceof ValidationResult.Warning.ConditionalSoftLock, "Dialogue validation should detect conditional softlocks in dialogues");
@@ -58,20 +61,29 @@ public class DialogueValidatorTest {
     }
 
     @Test
-    public void validationFailsOnLoopingDialogue() {
+    public void validationFailsOnLoopingDialogue() throws Exception {
         DialogueTemplate dialogue = loadDialogue("/looping_dialogue.json");
-        Assertions.assertTrue(DialogueValidator.validateStructure(dialogue) instanceof ValidationResult.Error.SoftLock, "Dialogue validation should detect looping dialogues");
+        Assertions.assertInstanceOf(ValidationResult.Error.SoftLock.class, DialogueValidator.validateStructure(dialogue), "Dialogue validation should detect looping dialogues");
     }
 
     @Test
-    public void validationFailsOnInvalidReference() {
+    public void validationFailsOnInvalidReference() throws Exception {
         DialogueTemplate dialogue = loadDialogue("/invalid_reference.json");
-        Assertions.assertTrue(DialogueValidator.validateStructure(dialogue) instanceof ValidationResult.Error.NonexistentIllustration, "Dialogue validation should detect invalid illustration reference");
+        Assertions.assertInstanceOf(ValidationResult.Error.NonexistentIllustration.class, DialogueValidator.validateStructure(dialogue), "Dialogue validation should detect invalid illustration reference");
     }
 
-    private static DialogueTemplate loadDialogue(String name) {
-        return Util.getResult(DialogueTemplate.CODEC.parse(JsonOps.INSTANCE, new Gson().fromJson(new InputStreamReader(Objects.requireNonNull(DialogueValidatorTest.class.getResourceAsStream(name))), JsonElement.class)), s -> {
+    private static DialogueTemplate loadDialogue(String name) throws Exception {
+        return getResult(DialogueTemplate.CODEC.parse(JsonOps.INSTANCE, new Gson().fromJson(new InputStreamReader(Objects.requireNonNull(DialogueValidatorTest.class.getResourceAsStream(name))), JsonElement.class)), s -> {
             throw new GameTestException(s);
         });
+    }
+
+    public static <T, E extends Exception> T getResult(DataResult<T> result, Function<String, E> exceptionGetter) throws Exception {
+        Optional<DataResult.PartialResult<T>> optional = result.error();
+        if (optional.isPresent()) {
+            throw exceptionGetter.apply(optional.get().message());
+        } else {
+            return result.result().orElseThrow();
+        }
     }
 }
